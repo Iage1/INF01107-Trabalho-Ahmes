@@ -1,0 +1,129 @@
+;Iagê von Linsingen - 00590289
+
+ORG 128
+	MSBA: DB 0
+	LSBA: DB 0
+	MSBN: DB 0
+	LSBN: DB 0 
+	rh: DB 0
+	rl: DB 0
+	zero: DB 0
+	um: DB 1
+	temp_dvdh: DB 0  ;variavel para nao alterar o valor final de dvd
+	temp_dvdl: DB 0
+	ih: DB 0 ;iterador parte alta
+	il: DB 0 ;iterador parte baixa
+	cont: DB 0 ;conta a quantidade de divisores (quando r == 0)
+	subh: DB 0
+	subl: DB 0
+ORG 0
+;inicializacao das variaveis 
+Init_main:
+	LDA um
+	STA il
+	LDA zero
+	STA ih
+	LDA zero
+	STA cont
+	LDA zero
+	STA subh
+	LDA zero
+	STA subl
+
+Loop_main: ;Subtrair i do dividendo. Faz uma subtracao em 16 bits.
+	LDA MSBA
+	SUB ih
+	STA subh
+	LDA LSBA
+	SUB il	
+	STA subl
+	JNB Loop_main_fim   ;se nao der borrow, pode seguir pra proxima parte
+	LDA subh            ;se der borrow, corrige o numero subtraindo um do high
+	SUB um		    
+	STA subh
+	
+Loop_main_fim:
+	LDA subh ;checa se o iterador passou o dividendo, para encerrar o loop. Checar usando o high
+	JN Fim 
+	
+	;JN da problema quando + de um byte, se LDA subl
+	;Ate aqui funciona se LDA subh
+
+;inicializacao das variaveis da divisao da vez e da temp_dvd.
+	Init_div: 
+		LDA zero
+		STA rl
+		LDA zero
+		STA rh
+		LDA LSBA
+		STA temp_dvdl
+		LDA MSBA
+		STA temp_dvdh
+		LDA zero
+		STA subh
+		LDA zero
+		STA subl
+	
+
+;subtrai o divisor da vez(i) do dividendo(dvd)
+	Loop:
+		LDA temp_dvdh
+		SUB ih
+		STA subh
+		LDA temp_dvdl
+		SUB il
+		STA subl
+		JNB Loop_check_neg ;pode seguir pra ver se ja deu negativo
+		LDA subh     	   ;se der borrow, arruma o numero para checagem
+		SUB um
+		STA subh
+
+	Loop_check_neg: ;Checa se passou
+		LDA subh
+		JN Fim_div ; sai do loop
+		STA temp_dvdh
+		LDA subl
+		STA temp_dvdl
+		JMP Loop
+	
+
+ORG 160	
+;checa se o resto eh zero para incrementar ou nao o contador. Incrementa o iterador
+	Fim_div: 
+		LDA temp_dvdh
+		STA rh
+		LDA temp_dvdl
+		STA rl
+		LDA rh
+		JZ High_eh_zero
+		JMP Incrementa_i_da_vez
+		
+		
+	High_eh_zero:
+		LDA rl
+		JZ Incrementa_cont
+		JMP Incrementa_i_da_vez
+		
+;incrementa o contador 
+	Incrementa_cont:
+		LDA cont 
+		ADD um
+		STA cont
+
+	Incrementa_i_da_vez:
+		LDA il
+		ADD um
+		STA il
+		JC Carry_no_i
+		JMP Loop_main
+	
+	Carry_no_i:
+		LDA ih
+		ADD um
+		STA ih
+		JMP Loop_main
+		
+Fim:
+	LDA cont
+	STA LSBN
+	HLT
